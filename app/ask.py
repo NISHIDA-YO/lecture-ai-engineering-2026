@@ -11,6 +11,7 @@
 """
 
 import argparse
+import time
 
 from google import genai
 from google.genai import errors
@@ -21,14 +22,23 @@ from app.config import MODEL, api_error_message, get_api_key
 DEFAULT_QUESTION = "AIE2026の講座の宿題にある「3レベル」とは何ですか？"
 
 
-def ask(question: str) -> str:
+def ask(question: str) -> tuple[str, float, int, int]:
+    """質問してLLMの回答を得る。
+
+    回答テキストに加えて、応答時間（秒）と入力/出力トークン数も返す。
+    モデルや質問を変えて比較しやすいよう、main() 側で表示する。
+    """
     client = genai.Client(api_key=get_api_key())
+
+    start = time.perf_counter()
     response = client.models.generate_content(model=MODEL, contents=question)
+    elapsed = time.perf_counter() - start
 
-    # TODO(第1回 演習): response.usage_metadata から
-    #   入力トークン数と出力トークン数を表示してみよう（Copilotに頼んでよい）
+    usage = response.usage_metadata
+    input_tokens = usage.prompt_token_count
+    output_tokens = usage.candidates_token_count
 
-    return response.text
+    return response.text, elapsed, input_tokens, output_tokens
 
 
 def main() -> None:
@@ -39,10 +49,14 @@ def main() -> None:
     print(f"[model] {MODEL}")
     print(f"[質問] {args.question}\n")
     try:
-        print(ask(args.question))
+        answer, elapsed, input_tokens, output_tokens = ask(args.question)
     except errors.APIError as e:
         print(api_error_message(e.code, e.message))
         raise SystemExit(1)
+
+    print(answer)
+    print(f"\n[応答時間] {elapsed:.2f}秒")
+    print(f"[トークン数] 入力={input_tokens} 出力={output_tokens}")
 
 
 if __name__ == "__main__":
