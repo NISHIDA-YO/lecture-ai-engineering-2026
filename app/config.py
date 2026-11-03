@@ -4,6 +4,31 @@ APIキーやモデル名はコードに書かず、環境変数から読み込�
 """
 
 import os
+from pathlib import Path
+
+ENV_FILE = Path(__file__).resolve().parent.parent / ".env"
+
+
+def load_env_file(path: Path = ENV_FILE) -> None:
+    """ローカル用: .env があれば「KEY=VALUE」の行を環境変数として読み込む。
+
+    すでに設定されている環境変数（Codespaces secret など）は上書きしない。
+    .env が無ければ何もしない。外部パッケージは使わない（依存を固定しているため）。
+    """
+    try:
+        text = path.read_text(encoding="utf-8")
+    except OSError:  # 無い、または読めない（サンドボックスで読み取り禁止など）ときは何もしない
+        return
+    for line in text.splitlines():
+        line = line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, _, value = line.partition("=")
+        os.environ.setdefault(key.strip(), value.strip().strip("\"'"))
+
+
+# MODEL を決める前に読み込む（AIE_MODEL を .env に書けるようにするため）
+load_env_file()
 
 # 既定モデル。環境変数 AIE_MODEL を設定すると切り替えられる。
 #   例: export AIE_MODEL=gemini-3.5-flash
