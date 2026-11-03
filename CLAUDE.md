@@ -24,6 +24,8 @@ uv run python -m app.agent --mcp --trace "質問"        # 第5回：同じエ�
 uv run python -m app.agent --mcp --list-tools         # モデルに見えるツール一覧を表示（APIキー不要）
 
 uv run python -m app.mcp_server --http    # 用語集MCPサーバーをStreamable HTTPで起動（既定はstdio）
+
+uv run python scripts/make_sft_dataset.py > glossary_sft.jsonl   # 第2回：用語集からSFT用JSONLを生成
 ```
 
 `uv run python -m app.ask`／`app.agent` の実行には環境変数 `GEMINI_API_KEY` が必要です。テストと
@@ -42,8 +44,13 @@ uv run python -m app.mcp_server --http    # 用語集MCPサーバーをStreamabl
   - **第5回のパス**：`app/mcp_server.py` が同じ関数を `server.tool()(...)` でMCPサーバーとして公開し、
     `app/agent.py --mcp` はその代わりに `load_mcp_servers()` でツールセットを組み立てたエージェントを作る。
     `load_mcp_servers()` は `app/mcp_servers.json`（Claude DesktopやCursorと同じ `mcpServers` 形式の設定
-    ファイル）を読み、`fastmcp` の `MCPToolset`／`StdioTransport` で接続します。このパスではツール名に
-    `サーバー名_` というプレフィックスが付きます。
+    ファイル）を読み、`pydantic_ai.mcp` の `MCPToolset`／`StdioTransport`（`fastmcp.Client` 経由）で接続
+    します。このパスではツール名に `サーバー名_` というプレフィックスが付きます。サーバー側は
+    `mcp.server.mcpserver.MCPServer` を使っています。
+- **第2回（LoRA）は `app/` とは別系統**：`notebooks/lora_format_tuning.ipynb` を Google Colab（T4）で
+  実行します。`scripts/make_sft_dataset.py` は同じ `data/glossary.json` から chat 形式（`messages`）の
+  JSONL を作る補助スクリプトです。`lectures/02/reference/` には講師が実行した参考結果（評価前後のJSON）が
+  入っています。ローカルの `uv` 環境やテストとは関係しません。
 - `app/agent.py` は実行時（`build_model()`）になってからモデル（`GoogleModel` + `GoogleProvider`）を
   組み立てます。これにより、テストはAPIキーなしで `agent.override(model=...)` から `TestModel` に
   差し替えられます。
