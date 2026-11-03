@@ -66,3 +66,10 @@ uv run python scripts/make_sft_dataset.py > glossary_sft.jsonl   # 第2回：用
   アップグレードしないこと。
 - 各 `lectures/NN/` ディレクトリには `problem.md`（課題内容）と `answer.md`（受講生が記入して提出する
   ファイル）があります。`answer.md` は受講生自身が書く内容なので、丸ごと代わりに生成するものではありません。
+
+# セキュリティルール
+
+- .env ファイルを読み取らないこと
+- API キーやパスワードをコード内にハードコードしないこと
+- 認証情報は必ず環境変数から取得するコードを書くこと
+- コミット時に .env や credentials を含めないこと
