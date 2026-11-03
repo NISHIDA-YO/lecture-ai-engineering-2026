@@ -86,3 +86,121 @@ AIE2026の講座における「3レベル」とは、宿題の構成を表す3�
 1. **基礎**：講義内容の確認
 2. **実装**：自分でコードを書く
 3. **発展**：調査や試行
+
+## --traceを追加したバージョン
+
+uv run python -m app.agent --trace "AIE2026の講座の宿題にある「3レベル」とは
+何ですか？"
+[model] gemini-3.5-flash-lite
+pydantic-ai v2.57.0 • Python 3.13.16
+
+                 agent: target • model: google:gemini-3.5-flash-lite
+                   tools: 3 • capabilities: 0
+      / \
+     /   \       observability: off — see every model and tool call live,
+
+/**_._**\ with cost
+/ | \ set it up free with Logfire and a GitHub login:
+/ | \ https://pydantic.dev/ai-setup.md
+`---.._|_..---' or use any OpenTelemetry backend:
+https://pydantic.dev/docs/ai/logfire/#otel
+
+                 goes away once observability is on — or
+                   PYDANTIC_AI_NO_BANNER=1
+
+AIE2026の講座における「3レベル」とは、宿題の構成を表す3つの段階のことです。
+
+具体的には以下の3つのレベルに分かれており、**どれか1つに取り組めばその回の宿題は完了**となります（原則として採点は行いません）。
+
+1. **基礎**：講義内容の確認
+2. **実装**：自分でコードを書く
+3. **発展**：調査や試行
+
+ご自身の興味や理解度に合わせて、好きなレベルを選んで取り組んでみてくださいね。
+
+（関連する回：第1回）
+
+--- trace ---
+[tool call] search_glossary({'query': '3レベル'})
+[tool return] search_glossary -> [{"term": "宿題の3レベル", "lecture": 1, "definition": "AIE2026の宿題の構成。「基礎（講義内容の確認）」「実装（自分でコードを書く）」「発展（調査や試行）」の3段階があり、どれか1つに取り組…
+[usage] RunUsage(cost=Decimal('0.0006700'), details={'text_prompt_tokens': 1025}, input_text_tokens=1025, input_tokens=1025, output_tokens=145, requests=2, tool_calls=1)
+
+## make_quizを使って問題作成
+
+uv run python -m app.agent --trace "第2回の内容から確認問題を1問出して"
+[model] gemini-3.5-flash-lite
+pydantic-ai v2.57.0 • Python 3.13.16
+
+                 agent: target • model: google:gemini-3.5-flash-lite
+                   tools: 3 • capabilities: 0
+      / \
+     /   \       observability: off — see every model and tool call live,
+
+/**_._**\ with cost
+/ | \ set it up free with Logfire and a GitHub login:
+/ | \ https://pydantic.dev/ai-setup.md
+`---.._|_..---' or use any OpenTelemetry backend:
+https://pydantic.dev/docs/ai/logfire/#otel
+
+                 goes away once observability is on — or
+                   PYDANTIC_AI_NO_BANNER=1
+
+第2回の内容から確認問題を1問出しますね！
+
+**【問題】**
+「ファインチューニング」の意味は？
+
+（答えたいときは、自分の言葉で答えてみてくださいね！）
+
+関係する回：第2回
+
+--- trace ---
+[tool call] make_quiz({'lecture': 2})
+[tool return] make_quiz -> {"question": "「ファインチューニング」の意味は？", "answer": "事前学習済みモデルを、特定のタスクや形式に合ったデータで追加学習させること。出力の形式や口調、特定ドメインの振る舞いを身につけさせるのに向く。最新の事…
+[usage] RunUsage(cost=Decimal('0.0004632'), details={'text_prompt_tokens': 994}, input_text_tokens=994, input_tokens=994, output_tokens=66, requests=2, tool_calls=1)
+
+###　「make_quizを使って問題作成」のテストの結果
+uv run pytest -q
+........... [100%]
+11 passed in 2.60s
+
+## 宿題（実装）の内容
+
+uv run python -m app.agent --trace "今日はツール呼び出しとrequestsの回数につ いて学んだ。学習ログに保存して"
+[model] gemini-3.5-flash-lite
+pydantic-ai v2.57.0 • Python 3.13.16
+
+                 agent: target • model: google:gemini-3.5-flash-lite
+                   output: str | DeferredToolRequests • tools: 4
+      / \          capabilities: 0
+     /   \
+
+/**_._**\ observability: off — see every model and tool call live,
+/ | \ with cost
+/ | \ set it up free with Logfire and a GitHub login:
+`---.._|_..---' https://pydantic.dev/ai-setup.md
+or use any OpenTelemetry backend:
+https://pydantic.dev/docs/ai/logfire/#otel
+
+                 goes away once observability is on — or
+                   PYDANTIC_AI_NO_BANNER=1
+
+[承認待ち] save_learning_log
+content: ## 本日の学び
+
+- ツール呼び出し（Tool use / Function calling）の仕組みと使い方
+- エージェントループにおける requests（API呼び出し）の回数や、コスト・レート制限への影響についての理解
+  title: ツール呼び出しとrequestsの回数
+  この内容で実行してよいですか？ [y/N]: y
+  本日の学習内容（ツール呼び出しとrequestsの回数）を学習ログに保存しました。
+
+ツール呼び出しやエージェントループを実装する際は、モデルとのやり取り（requests）が何回発生するかを意識することが、料金やレート制限の観点からとても重要ですね！
+
+第3回
+
+--- trace ---
+[tool call] search*glossary({'query': 'ツール呼び出し'})
+[tool return] search_glossary -> [{"term": "ツール（Tool use / Function calling）", "lecture": 3, "definition": "モデルが呼び出せるように用意した関数。モデルはツールの名前・説明・引数の型を見て、必要なと…
+[tool call] save_learning_log({'content': '## 本日の学び\n- ツール呼び出し（Tool use / Function calling）の仕組みと使い方\n- エージェントループにおける requests（API呼び出し）の回数や、コスト・レート制限への影響についての理解', 'title': 'ツール呼び出しとrequestsの回数'})
+[tool return] save_learning_log -> 学習の記録を保存しました: learning_log/20261103_225615*ツール呼び出しとrequestsの回数.md…
+[usage] RunUsage(cost=Decimal('0.0004657'), details={'text_prompt_tokens': 994}, input_text_tokens=994, input_tokens=994, output_tokens=67, requests=1, tool_calls=1)

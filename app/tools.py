@@ -6,10 +6,14 @@
 
 import json
 import random
+import re
+from datetime import datetime
 from functools import cache
 from pathlib import Path
 
 DATA_DIR = Path(__file__).resolve().parent.parent / "data"
+# 第3回 宿題（実装）: 学習の記録の保存先（.gitignore 済み。共有しない）
+LOG_DIR = Path(__file__).resolve().parent.parent / "learning_log"
 MAX_RESULTS = 3
 
 
@@ -95,3 +99,26 @@ def make_quiz(lecture: int) -> str:
         {"question": f"「{entry['term']}」の意味は？", "answer": entry["definition"]},
         ensure_ascii=False,
     )
+
+
+def save_learning_log(title: str, content: str) -> str:
+    """学習の記録を learning_log/ フォルダに Markdown ファイルとして保存する。
+
+    利用者が「今日学んだことを記録して」「学習ログに保存して」のように、
+    学習の記録を残すことをはっきり求めたときだけ使う。頼まれていないのに勝手に使わない。
+    title には記録の短い見出し（例: "第3回 ツール呼び出し"）、
+    content には記録する本文（学んだこと・疑問など）を入れる。
+    ファイルに書き込む取り消しにくい操作なので、実行前に利用者の承認を求める。
+    """
+    title = title.strip()
+    content = content.strip()
+    if not title or not content:
+        return "title と content の両方を指定してください。保存はしていません。"
+
+    LOG_DIR.mkdir(parents=True, exist_ok=True)
+    now = datetime.now()
+    # ファイル名に使えない文字（/ や : など）は _ に置き換え、長すぎる見出しは切り詰める
+    safe_title = re.sub(r'[\\/:*?"<>|\s]+', "_", title)[:50].strip("_") or "log"
+    path = LOG_DIR / f"{now:%Y%m%d_%H%M%S}_{safe_title}.md"
+    path.write_text(f"# {title}\n\n- 日時: {now:%Y-%m-%d %H:%M}\n\n{content}\n", encoding="utf-8")
+    return f"学習の記録を保存しました: learning_log/{path.name}"
