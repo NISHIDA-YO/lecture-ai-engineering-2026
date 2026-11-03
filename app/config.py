@@ -15,9 +15,11 @@ def load_env_file(path: Path = ENV_FILE) -> None:
     すでに設定されている環境変数（Codespaces secret など）は上書きしない。
     .env が無ければ何もしない。外部パッケージは使わない（依存を固定しているため）。
     """
-    if not path.exists():
+    try:
+        text = path.read_text(encoding="utf-8")
+    except OSError:  # 無い、または読めない（サンドボックスで読み取り禁止など）ときは何もしない
         return
-    for line in path.read_text(encoding="utf-8").splitlines():
+    for line in text.splitlines():
         line = line.strip()
         if not line or line.startswith("#") or "=" not in line:
             continue
