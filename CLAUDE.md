@@ -11,11 +11,13 @@ AIエンジニアリング講座（AIE2026、日本語で実施）の演習・�
 - 第2回：Colab で LoRA（`notebooks/lora_format_tuning.ipynb`、`scripts/make_sft_dataset.py` で用語集から SFT データを作る）
 - 第3回：ツール呼び出しを追加（`app/tools.py` + `app/agent.py`）
 - 第4回：評価セットのラベル付けと LLM-as-a-Judge（`tools/annotate.py` + `app/judge.py`）
-- 第5回：データとコンテキストの回
+- 第5回：データとコンテキストの回（まだ `lectures/05/`・`data/lectures/05.md` は存在しない）
 - 第6回：ツールを MCP サーバーの裏側に移す（`app/mcp_server.py` + `app/agent.py --mcp`）
 
-MCP の回は第5回から第6回に移りました。`app/agent.py` の docstring・コメント・`--help` には「第5回」の
-表記がまだ残っていますが、MCP については第6回が正しい表記です。
+MCP の回は第5回から第6回に移りました。`app/agent.py` の docstring・コメント・`--help` と
+`pyproject.toml` のコメントには「第5回」の表記がまだ残っていますが、MCP については第6回が正しい表記です。
+また README は `.github/workflows/test.yml`（PR ごとのテスト）に触れていますが、このリポジトリには
+存在しないため、CI に頼らずローカルで `uv run pytest -q` を実行して確認してください。
 
 コードのコメントや docstring は受講生向けに日本語で書かれています。`# TODO(第N回 演習): ...` という
 コメントは意図的に未完成にしてある演習用のスタブです（例：`agent.py` の `make_quiz` 登録、
@@ -69,7 +71,9 @@ Streamlit は `uv run --with` で一時的に追加して使います。`pyproje
   コードの `check_lecture_mark()` で判定します。総合判定に使う必須基準は `REQUIRED` で、clarity は
   参考扱いです。`--model test` では規則ベースの `FunctionModel` を使い、テストでも同じものを使います。
   人のラベルは `lectures/04/labels.jsonl`（受講生が作成）、講師のラベルは
-  `lectures/04/reference/labels_instructor.jsonl` です。`tools/annotate.py` は `app.judge` の関数を
+  `lectures/04/reference/labels_instructor.jsonl` で、採点結果は `lectures/04/judge_result.json` に
+  保存されます。`--generate` は `--cases` に指定したファイルを**上書き**するため、既定の
+  `data/eval/lec04_cases.jsonl` を壊さないよう必ず別ファイルを指定してください。`tools/annotate.py` は `app.judge` の関数を
   再利用しています。
 - データ（`data/glossary.json`、`data/lectures/NN.md`）は、エージェントが推測ではなくそこに基づいて
   回答すべき「正解データ」です。`app/ask.py` の `DEFAULT_QUESTION` は意図的に講座固有の質問にしてあります。
@@ -79,6 +83,9 @@ Streamlit は `uv run --with` で一時的に追加して使います。`pyproje
 ## このリポジトリ特有の決まり
 
 - API キーは必ず環境変数 `GEMINI_API_KEY` からのみ取得します（Codespaces secret で渡す想定）。
+- リポジトリ直下の `.env` の中身は**決して読み込まないでください**（Read・cat・grep・source など、内容が
+  出力に出る操作はすべて禁止）。読むと秘密情報がログに残るためです。存在確認（`ls`）や
+  `git check-ignore` のように中身を出さない確認だけは構いません。
 - `pyproject.toml`／`uv.lock` の依存バージョン（pydantic-ai-slim 2.57.0、google-genai 2.31.0）は、
   講座期間中は意図的に固定しています。指示なくアップグレードしないでください。
 - 各 `lectures/NN/` には `problem.md`（課題内容）と `answer.md`（受講生が記入して提出するファイル）が
