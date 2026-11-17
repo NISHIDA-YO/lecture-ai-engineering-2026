@@ -17,7 +17,7 @@ import sqlite_vec
 from app.config import (
     EMBEDDING_DIMENSIONS, EMBEDDING_MAX_TOKENS, EMBEDDING_MODEL,
     RAG_DB, RAG_DOCUMENT_IDS, RAG_SOURCE, RAG_TOP_K, RAG_TREE, get_api_key,
-    RAG_GRAPH, GRAPH_START_K, GRAPH_HOPS, GRAPH_MAX_RESULTS,
+    RAG_GRAPH, GRAPH_START_K, GRAPH_HOPS, GRAPH_MAX_RESULTS, NEIGHBOR_WINDOW,
 )
 
 
@@ -138,6 +138,32 @@ def search(query: str) -> list[dict]:
         return [dict(row) for row in rows]
 
 
+def search_with_neighbors(query: str) -> dict:
+    """第5回 宿題（実装）: ベクトル検索の結果に、同じ資料の前後ページの本文を付けて返す。
+
+    - 検索で当たったページ（role="hit"）ごとに、同じ document_id の page±NEIGHBOR_WINDOW を探す
+    - 前後ページ（role="neighbor"）には、どのページの前後か（neighbor_of）と位置（offset）を付ける
+    - 検索で当たったページや、すでに付けたページは重複して返さない
+    - 並びは「前のページ → 当たったページ → 次のページ」を検索順位の順に並べる
+    """
+    hits = search(query)
+    by_position = {(page["document_id"], page["page"]): page for page in load_pages(RAG_SOURCE)}
+    hit_ids = {hit["page_id"] for hit in hits}
+    added = set()
+    results = []
+    for rank, hit in enumerate(hits, 1):
+        for offset in range(-NEIGHBOR_WINDOW, NEIGHBOR_WINDOW + 1):
+            if offset == 0:
+                results.append({**hit, "role": "hit", "rank": rank})
+                continue
+            page = by_position.get((hit["document_id"], hit["page"] + offset))
+            if page is None or page["page_id"] in hit_ids or page["page_id"] in added:
+                continue
+            added.add(page["page_id"])
+            results.append({**page, "role": "neighbor", "neighbor_of": hit["page_id"], "offset": offset})
+    return {"results": results, "hit_count": len(hits), "neighbor_count": len(added)}
+
+
 def search_graph(query: str) -> dict:
     """ベクトル検索を入口に、前後ページと共通用語で候補を広げる。"""
     pages = {page["page_id"]: page for page in load_pages(RAG_SOURCE)}
@@ -201,9 +227,16 @@ def run_full_context(agent, question: str, model, instructions: str, prompt_temp
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="エージェントを使わず、講義資料の検索だけを実行する")
     parser.add_argument("query", help="調べたい内容")
+    parser.add_argument("--neighbors", action="store_true", help="検索結果の前後ページの本文も表示する（第5回 宿題）")
     args = parser.parse_args()
-    for i, result in enumerate(search(args.query), 1):
-        print(f"\n{'=' * 60}\n検索結果 {i}\n{'=' * 60}")
+    results = search_with_neighbors(args.query)["results"] if args.neighbors else search(args.query)
+    for i, result in enumerate(results, 1):
+        if result.get("role") == "neighbor":
+            where = "前" if result["offset"] < 0 else "次"
+            label = f"前後ページ（{result['neighbor_of']} の{where}のページ）"
+        else:
+            label = f"検索結果 {result.get('rank', i)}"
+        print(f"\n{'=' * 60}\n{i}. {label}\n{'=' * 60}")
         print(f"講義: {result['document_title']}")
         print(f"章: {result['section']}")
         print(f"タイトル: {result['title']}")

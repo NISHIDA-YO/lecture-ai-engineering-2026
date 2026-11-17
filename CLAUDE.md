@@ -11,7 +11,7 @@ AIエンジニアリング講座（AIE2026、日本語で実施）の演習・�
 - 第2回：Colab で LoRA（`notebooks/lora_format_tuning.ipynb`、`scripts/make_sft_dataset.py` で用語集から SFT データを作る）
 - 第3回：ツール呼び出しを追加（`app/tools.py` + `app/agent.py`）
 - 第4回：評価セットのラベル付けと LLM-as-a-Judge（`tools/annotate.py` + `app/judge.py`）
-- 第5回：データとコンテキストの回
+- 第5回：講義資料の検索（RAG）（`app/retrieval.py` + `scripts/build_rag_index.py` + `app/agent.py --tree/--graph/--full-context`）
 - 第6回：ツールを MCP サーバーの裏側に移す（`app/mcp_server.py` + `app/agent.py --mcp`）
 
 MCP の回は第5回から第6回に移りました。`app/agent.py` の docstring・コメント・`--help` には「第5回」の
@@ -31,6 +31,11 @@ uv run pytest -q tests/test_tools.py::test_lecture_summary   # 単体テスト�
 uv run python -m app.ask "質問"                      # 第1回：ツールなしの素のLLM呼び出し
 uv run python -m app.agent "質問"                     # 第3回：tools.py のツールを直接登録したエージェント
 uv run python -m app.agent --trace "質問"              # ツール呼び出し・戻り値を表示
+uv run python -m app.retrieval "LoRA QLoRA 違い"       # 第5回：講義資料のベクトル検索だけを実行
+uv run python -m app.agent --tree --trace "質問"       # 第5回：目次（tree.json）をたどって回答（検索DB不要）
+uv run python -m app.agent --graph --trace "質問"      # 第5回：検索結果からグラフ（graph.json）をたどって回答
+uv run python -m app.agent --full-context "質問"       # 第5回：検索せず全資料をプロンプトに入れる（検索DB不要）
+uv run python -m scripts.build_rag_index [--rebuild]  # 第5回：検索DBを作成（AIE_RAG_DB のパスに書き出す）
 uv run python -m app.agent --mcp --trace "質問"        # 第6回：同じエージェントをMCP経由のツールで動かす
 uv run python -m app.agent --mcp --list-tools         # モデルに見えるツール一覧を表示（APIキー不要）
 uv run python -m app.mcp_server --http                # 用語集MCPサーバーをStreamable HTTPで起動（既定はstdio）
@@ -48,6 +53,15 @@ Streamlit は `uv run --with` で一時的に追加して使います。`pyproje
 `GEMINI_API_KEY` が必要です。既定モデルは `gemini-3.5-flash-lite` で、環境変数 `AIE_MODEL` で
 切り替えられます（503 が続くときの代替は `gemini-3.1-flash-lite`）。
 
+ローカルでは、リポジトリ直下の `.env`（`GEMINI_API_KEY=...`、git 管理外）を uv に読み込ませて使います。
+コードは `.env` を読まず、uv が `uv run` で起動するプロセスにだけ環境変数として渡します（シェル自体には
+設定されません）。ターミナルを開くたびに次を実行してください。`.env` の中身は表示・読み込みしないでください。
+
+```bash
+export UV_ENV_FILE=.env                                                    # このターミナルの uv run で .env を読む
+uv run python -c "import os; print(bool(os.getenv('GEMINI_API_KEY')))"    # キーの値は出さず、読めたかだけ確認（True で OK）
+```
+
 ## アーキテクチャ
 
 - `app/config.py`：`MODEL`（`AIE_MODEL`）と `GEMINI_API_KEY` の取得を一元管理しています。
@@ -63,6 +77,13 @@ Streamlit は `uv run --with` で一時的に追加して使います。`pyproje
     プレフィックスが付きます。
 - `app/agent.py` は実行時（`build_model()`）にモデル（`GoogleModel` + `GoogleProvider`）を組み立てます。
   そのためテストは API キーなしで `agent.override(model=...)` により `TestModel` に差し替えられます。
+- `app/retrieval.py`（第5回）：`data/rag_data/` の講義資料（`lectures.json`：資料→章→ページ）を
+  1ページ＝1チャンクで扱います。対象資料・top-k・埋め込みモデル（`gemini-embedding-001`、768次元）などの
+  定数は `app/config.py` に集約されています。検索DB は sqlite-vec の `data/rag_data/index.sqlite3`
+  （第1〜3回分を同梱）で、環境変数 `AIE_RAG_DB` を設定すると作成・検索の両方がそのパスを使います。
+  既定のエージェントは `search_materials` ツールで検索し、`--tree`／`--graph` は
+  `agent.override(instructions=..., tools=[...])` でツールと指示を差し替え、`--full-context` は
+  `run_full_context()` で全資料を一度に渡します。検索時のクエリ埋め込みにも API キーが必要です。
 - `app/judge.py`（第4回）：`data/eval/rubric.md` を基準に、`data/eval/lec04_cases.jsonl` の回答を採点します。
   LLM が判定するのは grounding／scope／hint／clarity の4基準で、構造化出力（`JudgeResult`）を使い、
   理由→判定（pass/fail/unsure）の順に出力させます。末尾の「第N回」表記（`lecture_mark`）は LLM ではなく
