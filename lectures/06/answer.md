@@ -22,7 +22,35 @@
 
 <!-- 基礎・実装・発展のどれか1つに取り組めば完了です。 -->
 
-- 取り組んだレベル：基礎 / 実装 / 発展
+- 取り組んだレベル：発展
 - やったこと：
+  - 自分が使っている Claude Code を選び、MCP サーバーの設定方法を公式ドキュメントで調べた（調べた日付：2026-11-27、参照：https://code.claude.com/docs/en/mcp）
+  - Claude Code での設定の例として Serena（コードを記号単位で検索・編集し、トークンを節約できる MCP サーバー）の設定を取り上げ、演習で使った `app/mcp_servers.json` と比べた
+  - 詳しい比較は `lectures/06/homework_answer.md` にまとめた
 - 結果：
+
+  Claude Code での Serena の設定：
+
+  ```json
+  "serena": {
+    "type": "stdio",
+    "command": "serena",
+    "args": ["start-mcp-server", "--context=claude-code", "--project-from-cwd"],
+    "env": {}
+  }
+  ```
+
+  | 調べること | 演習（`app/mcp_servers.json`） | Claude Code |
+  |---|---|---|
+  | 設定を書く場所 | `app/mcp_servers.json` の 1 ファイルだけ（`app/mcp_agent.py` が読む） | local と user は `~/.claude.json`、project はリポジトリ直下の `.mcp.json`。`claude mcp add` コマンドでも登録できる |
+  | コマンドで起動する書き方 | `"command"` と `"args"`（`"env"` も書ける） | `"type": "stdio"` に `"command"`・`"args"`・`"env"`。コマンドでは `claude mcp add --transport stdio <名前> -- <コマンド> [引数...]` |
+  | URL で接続する書き方 | `"url"` だけ | `"type": "http"` と `"url"`（認証用の `"headers"` も書ける）。コマンドでは `claude mcp add --transport http <名前> <URL>` |
+  | 有効になる範囲 | このリポジトリで `app.mcp_agent` を実行したときだけ | local（既定）：自分だけ・そのプロジェクトだけ／project：`.mcp.json` を Git で共有し全員が使う／user：自分だけ・すべてのプロジェクト |
+
+  - 共通点：どちらも `mcpServers` の中に「サーバー名: 設定」を並べる形で、`command`・`args`・`env` の意味も同じ。Serena は、演習の `glossary`・`fetch` と同じく、自分の環境でコマンドとして起動する stdio のサーバー
+  - 違い：Claude Code は接続方式を `"type"` で明示する。`"type"` がなく `"url"` だけの項目はエラーになって読み込まれないので、演習の `"aws": {"url": ...}` はそのままでは使えない。また、同じ名前のサーバーが複数の範囲にあると local → project → user の順に優先され、`.mcp.json` のサーバーは使う前に利用者に確認する。設定には `${VAR}` のように環境変数を書ける
 - 気づき・疑問：
+  - 演習の `mcp_agent.py` は `"url"` の有無だけで接続方式を決めていた。Claude Code は `"type"` で明示するので、同じ `mcpServers` 形式でも、ソフトウェアごとにそのまま使い回せるとは限らないと分かった
+  - 演習の設定は 1 ファイルだけだったが、Claude Code は範囲が 3 つあり、チームで共有する設定（project）と自分だけの設定（local・user）を分けられる。API キーのような値は、`${VAR}` を使えば共有ファイルに直接書かずに済む
+  - Claude Code は `.mcp.json` のサーバーを使う前に利用者に確認する。演習の補足で学んだ「信頼できるサーバーかを確かめてから足す」を、ソフトウェアの側でも支えていると感じた
+  - 疑問：Serena の `--context=claude-code` や `--project-from-cwd` は、Claude Code 以外のソフトウェアや演習の `app.mcp_agent` から起動したとき、公開されるツールがどう変わるのか
